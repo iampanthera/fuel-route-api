@@ -1,0 +1,388 @@
+{
+  "info": {
+    "name": "Fuel Route Planner API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Demo requests for the fuel route planner. Run the server, then Send in order. Request 2 stores the map URL used by request 11."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "mapUrl",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Short trip, no stop needed (Chicago to Indianapolis)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/route-plan/",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"Chicago, IL\",\n  \"finish\": \"Indianapolis, IN\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test(\"one routing call (or cache hit)\", () => pm.expect(b.meta.routing_api_calls).to.be.at.most(1));",
+              "pm.test(\"no leg over 500 mi\", () => { const m=[0,...b.fuel_stops.map(s=>s.route_mile), b.route.distance_miles]; for (let i=1;i<m.length;i++) pm.expect(m[i]-m[i-1]).to.be.at.most(500.5); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Long trip (Chicago to Dallas)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/route-plan/",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"Chicago, IL\",\n  \"finish\": \"Dallas, TX\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test(\"one routing call (or cache hit)\", () => pm.expect(b.meta.routing_api_calls).to.be.at.most(1));",
+              "pm.test(\"no leg over 500 mi\", () => { const m=[0,...b.fuel_stops.map(s=>s.route_mile), b.route.distance_miles]; for (let i=1;i<m.length;i++) pm.expect(m[i]-m[i-1]).to.be.at.most(500.5); });",
+              "pm.collectionVariables.set(\"mapUrl\", b.map_url);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Cross-country (New York to Los Angeles)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/route-plan/",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"New York, NY\",\n  \"finish\": \"Los Angeles, CA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test(\"one routing call (or cache hit)\", () => pm.expect(b.meta.routing_api_calls).to.be.at.most(1));",
+              "pm.test(\"no leg over 500 mi\", () => { const m=[0,...b.fuel_stops.map(s=>s.route_mile), b.route.distance_miles]; for (let i=1;i<m.length;i++) pm.expect(m[i]-m[i-1]).to.be.at.most(500.5); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Same trip, pure cheapest fuel (stop penalty 0)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/route-plan/",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"New York, NY\",\n  \"finish\": \"Los Angeles, CA\",\n  \"stop_penalty_usd\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test(\"one routing call (or cache hit)\", () => pm.expect(b.meta.routing_api_calls).to.be.at.most(1));",
+              "pm.test(\"no leg over 500 mi\", () => { const m=[0,...b.fuel_stops.map(s=>s.route_mile), b.route.distance_miles]; for (let i=1;i<m.length;i++) pm.expect(m[i]-m[i-1]).to.be.at.most(500.5); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Coordinates input",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/route-plan/",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": {\n    \"lat\": 39.7392,\n    \"lon\": -104.9903\n  },\n  \"finish\": \"35.4676,-97.5164\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test(\"one routing call (or cache hit)\", () => pm.expect(b.meta.routing_api_calls).to.be.at.most(1));",
+              "pm.test(\"no leg over 500 mi\", () => { const m=[0,...b.fuel_stops.map(s=>s.route_mile), b.route.distance_miles]; for (let i=1;i<m.length;i++) pm.expect(m[i]-m[i-1]).to.be.at.most(500.5); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. GET variant",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/route-plan/?start=Denver, CO&finish=Kansas City, MO",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test(\"one routing call (or cache hit)\", () => pm.expect(b.meta.routing_api_calls).to.be.at.most(1));",
+              "pm.test(\"no leg over 500 mi\", () => { const m=[0,...b.fuel_stops.map(s=>s.route_mile), b.route.distance_miles]; for (let i=1;i<m.length;i++) pm.expect(m[i]-m[i-1]).to.be.at.most(500.5); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Infeasible: Seattle to LA (no stations on I-5 in the price file)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/route-plan/",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"Seattle, WA\",\n  \"finish\": \"Los Angeles, CA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"422\", () => pm.response.to.have.status(422));",
+              "pm.test(\"code INFEASIBLE_ROUTE\", () => pm.expect(pm.response.json().error.code).to.eql(\"INFEASIBLE_ROUTE\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Outside service area (Toronto)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/route-plan/",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": {\n    \"lat\": 43.65,\n    \"lon\": -79.38\n  },\n  \"finish\": \"Dallas, TX\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"422\", () => pm.response.to.have.status(422));",
+              "pm.test(\"code LOCATION_OUTSIDE_SERVICE_AREA\", () => pm.expect(pm.response.json().error.code).to.eql(\"LOCATION_OUTSIDE_SERVICE_AREA\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Ambiguous city",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/route-plan/",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"Springfield\",\n  \"finish\": \"Dallas, TX\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"code LOCATION_AMBIGUOUS\", () => pm.expect(pm.response.json().error.code).to.eql(\"LOCATION_AMBIGUOUS\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Validation error",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/route-plan/",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": {\n    \"lat\": 200,\n    \"lon\": -100\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"code INVALID_REQUEST\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_REQUEST\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Map page for request 2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{mapUrl}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
