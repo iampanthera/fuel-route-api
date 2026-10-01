@@ -2,6 +2,8 @@
 
 A Django 6.1 API that takes a start and finish inside the USA and returns the driving route, the cheapest places to refuel along it (500 mi range, 10 MPG), and the total fuel cost. It also gives you a link to a map page.
 
+**[The assessment brief, and how each requirement is met →](ASSESSMENT.md)**
+
 - **One routing call per trip.** Zero when the route is cached or start equals finish.
 - **Free, open-source routing, no API key.** OSRM is the primary server and Valhalla the automatic fallback.
 - **Fast.** About 30 to 100 ms of server time on top of the routing call, even on 3,000 mile trips.
