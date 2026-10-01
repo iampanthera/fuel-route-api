@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fuel Route Planner</title>
+  <style>
+    body { font:15px/1.5 system-ui, sans-serif; max-width:640px; margin:40px auto; padding:0 16px; }
+    input { width:100%; padding:8px; margin:4px 0 12px; font:inherit; }
+    button { padding:8px 16px; font:inherit; }
+    pre { background:#f4f5f7; padding:12px; overflow:auto; font-size:12px; }
+    code { background:#f4f5f7; padding:1px 4px; }
+  </style>
+</head>
+<body>
+  <h1>Fuel Route Planner</h1>
+  <p>API: <code>POST /api/v1/route-plan/</code> with <code>{"start": "Chicago, IL", "finish": "Dallas, TX"}</code>.
+     Locations can be <code>"City, ST"</code>, <code>"lat,lon"</code> or <code>{"lat": .., "lon": ..}</code>.</p>
+  <form id="f">
+    <label>Start <input name="start" value="Chicago, IL"></label>
+    <label>Finish <input name="finish" value="Dallas, TX"></label>
+    <button>Plan trip</button>
+  </form>
+  <p id="out"></p>
+  <pre id="json" hidden></pre>
+  <script>
+    document.getElementById("f").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const out = document.getElementById("out"), pre = document.getElementById("json");
+      out.textContent = "Planning...";
+      const r = await fetch("/api/v1/route-plan/", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ start: fd.get("start"), finish: fd.get("finish") })
+      });
+      const body = await r.json();
+      pre.hidden = false; pre.textContent = JSON.stringify(body, null, 2);
+      if (r.ok) {
+        out.innerHTML = `${body.route.distance_miles} mi, ${body.fuel_stops.length} stops, ` +
+          `<b>$${body.summary.total_fuel_cost}</b> &middot; <a href="${body.map_url}">open map</a>`;
+      } else { out.textContent = body.error.message; }
+    });
+  </script>
+</body>
+</html>

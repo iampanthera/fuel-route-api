@@ -1,0 +1,75 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fuel route: {{ plan.start.label|default:"start" }} to {{ plan.finish.label|default:"finish" }}</title>
+  <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">
+  <style>
+    :root { --bg:#fff; --fg:#1d2330; --muted:#5b6475; --line:#e3e6ec; --accent:#2563eb; --stop:#d97706; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#12151c; --fg:#e8ebf1; --muted:#9aa3b5; --line:#262b36; } }
+    * { box-sizing: border-box; }
+    body { margin:0; font:14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; background:var(--bg); color:var(--fg);
+           display:grid; grid-template-columns: 360px 1fr; height:100vh; }
+    aside { overflow:auto; padding:18px; border-right:1px solid var(--line); }
+    #map { height:100vh; }
+    h1 { font-size:17px; margin:0 0 4px; }
+    .muted { color:var(--muted); }
+    .kpis { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0; }
+    .kpi { border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+    .kpi b { display:block; font-size:18px; }
+    ol { padding-left:20px; }
+    li { margin-bottom:10px; }
+    .num { display:inline-flex; width:22px; height:22px; border-radius:50%; background:var(--stop); color:#fff;
+           align-items:center; justify-content:center; font-weight:600; font-size:12px; }
+    @media (max-width: 760px) { body { grid-template-columns:1fr; grid-template-rows:auto 60vh; } #map { height:60vh; } }
+  </style>
+</head>
+<body>
+<aside>
+  <h1>{{ plan.start.label|default:plan.start.query }} &rarr; {{ plan.finish.label|default:plan.finish.query }}</h1>
+  <div class="muted">{{ plan.route.distance_miles }} mi &middot; {{ plan.route.duration_hours }} h &middot; via {{ plan.route.provider }}</div>
+  <div class="kpis">
+    <div class="kpi"><span class="muted">Fuel cost</span><b>${{ plan.summary.total_fuel_cost }}</b></div>
+    <div class="kpi"><span class="muted">Stops</span><b>{{ plan.fuel_stops|length }}</b></div>
+    <div class="kpi"><span class="muted">Gallons bought</span><b>{{ plan.summary.gallons_purchased }}</b></div>
+    <div class="kpi"><span class="muted">Gallons used</span><b>{{ plan.summary.gallons_consumed }}</b></div>
+  </div>
+  <ol>
+    {% for s in plan.fuel_stops %}
+      <li><b>{{ s.name }}</b><br>
+        <span class="muted">{{ s.city }}, {{ s.state }} &middot; mile {{ s.route_mile }}</span><br>
+        {{ s.gallons }} gal @ ${{ s.price_per_gallon }} = <b>${{ s.cost }}</b></li>
+    {% empty %}
+      <li class="muted">No fuel stop needed: the starting tank covers this trip.</li>
+    {% endfor %}
+  </ol>
+  <p class="muted" style="font-size:12px">Assumptions:<br>{% for a in plan.summary.assumptions %}&bull; {{ a }}<br>{% endfor %}</p>
+</aside>
+<div id="map"></div>
+{{ plan_json|json_script:"plan-data" }}
+<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+<script>
+  const plan = JSON.parse(document.getElementById("plan-data").textContent);
+  const map = L.map("map");
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
+  }).addTo(map);
+  const line = plan.route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+  const route = L.polyline(line, { color: "#2563eb", weight: 5, opacity: 0.85 }).addTo(map);
+  L.marker([plan.start.lat, plan.start.lon]).addTo(map).bindPopup("<b>Start</b><br>" + (plan.start.label || ""));
+  L.marker([plan.finish.lat, plan.finish.lon]).addTo(map).bindPopup("<b>Finish</b><br>" + (plan.finish.label || ""));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  plan.fuel_stops.forEach((s) => {
+    L.marker([s.lat, s.lon], {
+      icon: L.divIcon({ className: "", html: `<span class="num">${s.sequence}</span>`, iconSize: [22, 22] })
+    }).addTo(map).bindPopup(
+      `<b>${s.sequence}. ${esc(s.name)}</b><br>${esc(s.city)}, ${s.state}<br>` +
+      `$${s.price_per_gallon}/gal &middot; ${s.gallons} gal &middot; <b>$${s.cost}</b><br>mile ${s.route_mile}`
+    );
+  });
+  if (line.length > 1) map.fitBounds(route.getBounds(), { padding: [30, 30] });
+  else map.setView([plan.start.lat, plan.start.lon], 10);
+</script>
+</body>
+</html>
